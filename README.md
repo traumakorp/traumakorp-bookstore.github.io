@@ -30,3 +30,8 @@ The included `555` phone numbers are demo numbers. Replace them with Traumakorp'
 
 ## Rights
 Book titles, cover images, author names and publisher trademarks belong to their respective rights holders.
+
+
+## Real book covers
+
+Every catalog title now has automatic real-cover resolution. The storefront matches each title and author against Google Books first and Open Library as a fallback, caches the resolved cover locally in the browser, and reuses it on later visits. This replaces generic placeholders as soon as a verified book-cover image is found.
