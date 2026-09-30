@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Traumakorp — a modern online bookstore with curated fiction, fantasy, thrillers, horror, classics, kids' books, personal growth and business titles." />
+  <title>Traumakorp | Online Bookstore</title>
+  <link rel="preconnect" href="https://openlibrary.org" />
+  <link rel="preconnect" href="https://covers.openlibrary.org" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Traumakorp home">
+      <img src="assets/traumakorp-logo.webp" alt="Traumakorp logo" width="54" height="54" />
+      <span><strong>Traumakorp</strong><small>Discover. Read. Imagine.</small></span>
+    </a>
+    <nav class="header-actions" aria-label="Main navigation">
+      <a href="#catalog">Books</a>
+      <a href="#about">About</a>
+      <button class="cart-button" id="openCart" aria-label="Open shopping cart">Cart <span id="cartCount">0</span></button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Curated online bookstore</span>
+        <h1>Your next story starts at <em>Traumakorp.</em></h1>
+        <p>Browse 64 books across eight carefully organized categories, from new releases and fantasy to horror, classics, kids' favorites, personal growth and business.</p>
+        <div class="hero-buttons">
+          <a class="primary" href="#catalog">Explore the catalog</a>
+          <a class="secondary" href="tel:+12125550136">Book advisory</a>
+        </div>
+        <div class="hero-stats">
+          <div><strong>64</strong><span>Books</span></div>
+          <div><strong>8</strong><span>Categories</span></div>
+          <div><strong>Real</strong><span>Retail prices*</span></div>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <img src="assets/traumakorp-logo.webp" alt="" />
+        <div class="floating-card fc-one">📚 <b>New releases</b></div>
+        <div class="floating-card fc-two">✨ <b>Reader favorites</b></div>
+      </div>
+    </section>
+
+    <section class="trust-strip">
+      <span>✓ Organized by genre</span>
+      <span>✓ Real cover lookup</span>
+      <span>✓ Current retail-price reference</span>
+      <span>✓ Responsive on phone & desktop</span>
+    </section>
+
+    <section class="catalog-section" id="catalog">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">The Traumakorp collection</span>
+          <h2>Find your next read</h2>
+        </div>
+        <p>Use search, category filters, or sorting to explore the store.</p>
+      </div>
+
+      <div class="catalog-toolbar">
+        <label class="search-wrap">
+          <span>⌕</span>
+          <input id="searchInput" type="search" placeholder="Search by title or author..." autocomplete="off" />
+        </label>
+        <select id="sortSelect" aria-label="Sort books">
+          <option value="featured">Sort: Featured</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="title">Title: A–Z</option>
+        </select>
+      </div>
+
+      <div class="category-chips" id="categoryChips" aria-label="Book categories"></div>
+      <div class="catalog-meta"><strong id="resultCount">64 books</strong><span>*Prices were checked against current U.S. retail listings on Sept. 29, 2026 and may change.</span></div>
+      <div class="book-grid" id="bookGrid"></div>
+      <div class="empty-state" id="emptyState" hidden>
+        <h3>No books found</h3><p>Try another title, author, or category.</p>
+      </div>
+    </section>
+
+    <section class="advisory" id="about">
+      <div>
+        <span class="eyebrow">Need a recommendation?</span>
+        <h2>Traumakorp Book Advisory</h2>
+        <p>Tell us what you enjoy reading and we can help you narrow down a genre, author, or next title.</p>
+      </div>
+      <div class="contact-card">
+        <small>BOOK ADVISORY</small>
+        <a href="tel:+12125550136">+1 (212) 555-0136</a>
+        <small>CUSTOMER SUPPORT</small>
+        <a href="tel:+12125550184">+1 (212) 555-0184</a>
+        <span>Mon–Sat · 9:00 AM–7:00 PM ET</span>
+      </div>
+    </section>
+  </main>
+
+  <aside class="cart-drawer" id="cartDrawer" aria-hidden="true">
+    <div class="cart-head">
+      <div><span class="eyebrow">Your selection</span><h2>Shopping Cart</h2></div>
+      <button id="closeCart" class="icon-button" aria-label="Close cart">×</button>
+    </div>
+    <div id="cartItems" class="cart-items"></div>
+    <div class="cart-empty" id="cartEmpty">Your cart is empty.</div>
+    <div class="cart-summary">
+      <div><span>Subtotal</span><strong id="cartTotal">$0.00</strong></div>
+      <button class="checkout" id="checkoutButton">Continue to checkout</button>
+      <small>Demo storefront — connect your payment provider before accepting live orders.</small>
+    </div>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="assets/traumakorp-logo.webp" alt="Traumakorp" width="52" height="52" />
+      <div><strong>Traumakorp</strong><span>Your next story starts here.</span></div>
+    </div>
+    <div class="footer-links">
+      <a href="#catalog">Shop books</a>
+      <a href="PRICE_SOURCES.md">Price sources</a>
+      <a href="tel:+12125550184">Support</a>
+    </div>
+    <p>© 2026 Traumakorp. Book titles, cover artwork and publisher trademarks belong to their respective owners. Cover images are requested from Open Library when available.</p>
+  </footer>
+
+  <script src="books.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
