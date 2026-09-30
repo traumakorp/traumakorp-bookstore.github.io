@@ -1,97 +1,10 @@
-const books = window.TRAUMAKORP_BOOKS;
-const grid = document.getElementById('bookGrid');
-const categoryChips = document.getElementById('categoryChips');
-const searchInput = document.getElementById('searchInput');
-const sortSelect = document.getElementById('sortSelect');
-const resultCount = document.getElementById('resultCount');
-const emptyState = document.getElementById('emptyState');
-let activeCategory = 'All';
-let cart = JSON.parse(localStorage.getItem('traumakorp-cart') || '[]');
-let wish = new Set(JSON.parse(localStorage.getItem('traumakorp-wishlist') || '[]'));
-
-const categoryPalette = {
-  'New Releases':['#163553','#eebd5a'], 'Fantasy & Sci-Fi':['#1c284f','#c3a8ff'], 'Romance':['#4c2035','#ffc0d9'],
-  'Mystery & Thrillers':['#202d36','#98bfd3'], 'Horror':['#3a171b','#f0a5a8'], 'Classics & Literary':['#323119','#e8d890'],
-  'Kids':['#143b38','#7ee2c8'], 'Growth & Business':['#342b1a','#f1c774']
-};
-
-function esc(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-function placeholder(book){
-  const [bg,accent]=categoryPalette[book.category]||['#15324a','#f0c66b'];
-  const title=book.title.length>34?book.title.slice(0,34)+'…':book.title;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="560" height="820"><rect width="100%" height="100%" fill="${bg}"/><rect x="34" y="34" width="492" height="752" rx="18" fill="none" stroke="${accent}" stroke-width="3" opacity=".75"/><path d="M160 238c67 0 107 25 120 55 13-30 53-55 120-55v164c-67 0-107 25-120 55-13-30-53-55-120-55z" fill="none" stroke="${accent}" stroke-width="9"/><text x="280" y="535" text-anchor="middle" fill="#fff8e8" font-size="40" font-family="Georgia" font-weight="700">${esc(title)}</text><text x="280" y="595" text-anchor="middle" fill="${accent}" font-size="22" font-family="Arial">${esc(book.author)}</text><text x="280" y="700" text-anchor="middle" fill="#b9c8d2" font-size="18" font-family="Arial">TRAUMAKORP</text></svg>`;
-  return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg);
-}
-
-function card(book){
-  return `<article class="book-card" data-id="${book.id}">
-    <div class="cover-wrap">
-      <img loading="lazy" data-cover-id="${book.id}" src="${placeholder(book)}" alt="Cover of ${esc(book.title)}" />
-      <div class="cover-shade"></div><span class="format-badge">${esc(book.format)}</span>
-      <button class="wish ${wish.has(book.id)?'active':''}" data-wish="${book.id}" aria-label="Save ${esc(book.title)}">♥</button>
-    </div>
-    <div class="book-info"><span class="book-category">${esc(book.category)}</span><h3 class="book-title">${esc(book.title)}</h3><div class="book-author">${esc(book.author)}</div>
-      <div class="price-row"><strong class="price">$${book.price.toFixed(2)}</strong><button class="add-cart" data-add="${book.id}">Add to cart</button></div>
-    </div></article>`;
-}
-
-function render(){
-  const q=searchInput.value.trim().toLowerCase();
-  let list=books.filter(b=>(activeCategory==='All'||b.category===activeCategory)&&(!q||`${b.title} ${b.author}`.toLowerCase().includes(q)));
-  const s=sortSelect.value;
-  if(s==='price-asc') list.sort((a,b)=>a.price-b.price);
-  if(s==='price-desc') list.sort((a,b)=>b.price-a.price);
-  if(s==='title') list.sort((a,b)=>a.title.localeCompare(b.title));
-  grid.innerHTML=list.map(card).join('');
-  resultCount.textContent=`${list.length} book${list.length===1?'':'s'}`;
-  emptyState.hidden=list.length!==0;
-  observeCovers();
-}
-
-const cats=['All',...new Set(books.map(b=>b.category))];
-categoryChips.innerHTML=cats.map(c=>`<button data-cat="${esc(c)}" class="${c==='All'?'active':''}">${esc(c)}</button>`).join('');
-categoryChips.addEventListener('click',e=>{const b=e.target.closest('[data-cat]');if(!b)return;activeCategory=b.dataset.cat;categoryChips.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));render();});
-searchInput.addEventListener('input',render);sortSelect.addEventListener('change',render);
-
-grid.addEventListener('click',e=>{
-  const add=e.target.closest('[data-add]');
-  if(add){cart.push(Number(add.dataset.add));saveCart();toast('Added to cart');return;}
-  const w=e.target.closest('[data-wish]');
-  if(w){const id=Number(w.dataset.wish);wish.has(id)?wish.delete(id):wish.add(id);localStorage.setItem('traumakorp-wishlist',JSON.stringify([...wish]));w.classList.toggle('active');}
-});
-
-async function loadCover(img, book){
-  const cacheKey='tk-cover-'+book.id;
-  const cached=localStorage.getItem(cacheKey);
-  if(cached){img.src=cached;return;}
-  try{
-    const url=`https://openlibrary.org/search.json?title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author.split(',')[0])}&limit=3&fields=cover_i,title,author_name`;
-    const r=await fetch(url); if(!r.ok) throw new Error('cover');
-    const data=await r.json(); const doc=(data.docs||[]).find(d=>d.cover_i)||data.docs?.[0];
-    if(doc?.cover_i){const cover=`https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;img.src=cover;localStorage.setItem(cacheKey,cover);}
-  }catch(_e){/* keep local fallback */}
-}
-let io;
-function observeCovers(){
-  if(io) io.disconnect();
-  io=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){const img=entry.target;const book=books.find(b=>b.id===Number(img.dataset.coverId));if(book)loadCover(img,book);io.unobserve(img);}})},{rootMargin:'350px'});
-  document.querySelectorAll('[data-cover-id]').forEach(i=>io.observe(i));
-}
-
-const drawer=document.getElementById('cartDrawer'),overlay=document.getElementById('overlay'),cartItems=document.getElementById('cartItems'),cartEmpty=document.getElementById('cartEmpty'),cartTotal=document.getElementById('cartTotal'),cartCount=document.getElementById('cartCount');
-function saveCart(){localStorage.setItem('traumakorp-cart',JSON.stringify(cart));renderCart();}
-function renderCart(){
-  cartCount.textContent=cart.length;
-  const counts=cart.reduce((m,id)=>(m[id]=(m[id]||0)+1,m),{});
-  const unique=Object.keys(counts).map(Number);
-  cartEmpty.style.display=unique.length?'none':'block';
-  cartItems.innerHTML=unique.map(id=>{const b=books.find(x=>x.id===id);return `<div class="cart-item"><img src="${placeholder(b)}" alt=""><div><strong>${esc(b.title)}</strong><span>${counts[id]} × $${b.price.toFixed(2)}</span></div><button data-remove="${id}" aria-label="Remove">×</button></div>`}).join('');
-  cartTotal.textContent='$'+cart.reduce((sum,id)=>sum+(books.find(b=>b.id===id)?.price||0),0).toFixed(2);
-}
-cartItems.addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const id=Number(b.dataset.remove);const idx=cart.indexOf(id);if(idx>=0)cart.splice(idx,1);saveCart();});
-function openCart(){drawer.classList.add('open');overlay.classList.add('open');drawer.setAttribute('aria-hidden','false')}
-function closeCart(){drawer.classList.remove('open');overlay.classList.remove('open');drawer.setAttribute('aria-hidden','true')}
-document.getElementById('openCart').onclick=openCart;document.getElementById('closeCart').onclick=closeCart;overlay.onclick=closeCart;
-document.getElementById('checkoutButton').onclick=()=>toast('Checkout is ready for payment-provider integration.');
-function toast(msg){let t=document.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),1800)}
-render();renderCart();
+const books=window.TRAUMAKORP_BOOKS;const grid=document.getElementById('bookGrid'),chips=document.getElementById('categoryChips'),search=document.getElementById('searchInput'),sort=document.getElementById('sortSelect'),result=document.getElementById('resultCount'),empty=document.getElementById('emptyState'),more=document.getElementById('loadMore');let active='All',visible=30,cart=JSON.parse(localStorage.getItem('tk-cart')||'[]'),wish=new Set(JSON.parse(localStorage.getItem('tk-wish')||'[]'));const palette={'Best Sellers':['#20344c','#e9b850'],'Fantasy':['#2b2349','#c7b0ff'],'Science Fiction':['#122f45','#80d7ff'],'Romance':['#4c2035','#ffc0d9'],'Mystery & Thrillers':['#202d36','#98bfd3'],'Horror':['#3a171b','#f0a5a8'],'Classics':['#35301a','#e8d890'],'Young Adult':['#193748','#a8d6ff'],'Kids':['#143b38','#7ee2c8'],'Personal Growth':['#3b2c1a','#f1c774'],'Business & Finance':['#24361e','#b8df8c'],'Biography & History':['#39291e','#e7b890'],'Science & Technology':['#1c3041','#9ad8d1']};
+function esc(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}function placeholder(b){const [bg,a]=palette[b.category]||['#15324a','#f0c66b'],t=b.title.length>31?b.title.slice(0,31)+'…':b.title;const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="520" height="780"><rect width="100%" height="100%" fill="${bg}"/><rect x="28" y="28" width="464" height="724" rx="18" fill="none" stroke="${a}" stroke-width="3" opacity=".75"/><circle cx="260" cy="180" r="68" fill="none" stroke="${a}" stroke-width="5" opacity=".65"/><path d="M190 155c32-12 55-5 70 16 15-21 38-28 70-16v92c-32-12-55-5-70 16-15-21-38-28-70-16z" fill="none" stroke="${a}" stroke-width="8"/><text x="260" y="475" text-anchor="middle" fill="#fff8e8" font-size="37" font-family="Georgia" font-weight="700">${esc(t)}</text><text x="260" y="530" text-anchor="middle" fill="${a}" font-size="21" font-family="Arial">${esc(b.author.slice(0,34))}</text><text x="260" y="680" text-anchor="middle" fill="#b9c8d2" font-size="17" font-family="Arial" letter-spacing="4">TRAUMAKORP</text></svg>`;return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)}
+function card(b){return `<article class="book-card" data-id="${b.id}"><div class="cover-wrap"><img loading="lazy" data-cover-id="${b.id}" src="${placeholder(b)}" alt="Cover of ${esc(b.title)}"><div class="cover-shade"></div><span class="format-badge">${esc(b.format)}</span><span class="live-badge" id="live-${b.id}">Live price</span><button class="wish ${wish.has(b.id)?'active':''}" data-wish="${b.id}" aria-label="Save ${esc(b.title)}">♥</button></div><div class="book-info"><span class="book-category">${esc(b.category)}</span><h3 class="book-title">${esc(b.title)}</h3><div class="book-author">${esc(b.author)}</div><div class="price-row"><div class="price-box"><strong class="price" id="price-${b.id}">$${b.price.toFixed(2)}</strong><span class="price-note" id="note-${b.id}">Reference price</span></div><button class="add-cart" data-add="${b.id}">Add to cart</button></div></div></article>`}
+function filtered(){const q=search.value.trim().toLowerCase();let list=books.filter(b=>(active==='All'||b.category===active)&&(!q||(`${b.title} ${b.author}`).toLowerCase().includes(q)));if(sort.value==='price-asc')list.sort((a,b)=>a.price-b.price);if(sort.value==='price-desc')list.sort((a,b)=>b.price-a.price);if(sort.value==='title')list.sort((a,b)=>a.title.localeCompare(b.title));return list}
+function render(reset=false){if(reset)visible=30;const list=filtered(),shown=list.slice(0,visible);grid.innerHTML=shown.map(card).join('');result.textContent=`${list.length} book${list.length===1?'':'s'}`;empty.hidden=list.length!==0;more.hidden=shown.length>=list.length;observeMeta()}
+const cats=['All',...new Set(books.map(b=>b.category))];chips.innerHTML=cats.map(c=>`<button data-cat="${esc(c)}" class="${c==='All'?'active':''}">${esc(c)}</button>`).join('');const counts=books.reduce((m,b)=>(m[b.category]=(m[b.category]||0)+1,m),{});document.getElementById('categoryCards').innerHTML=Object.keys(counts).map(c=>`<button class="category-card" data-showcat="${esc(c)}"><i>${counts[c]} books</i><b>${esc(c)}</b><span>Explore this shelf →</span></button>`).join('');function selectCat(c){active=c;chips.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.cat===c));render(true);document.getElementById('catalog').scrollIntoView({behavior:'smooth',block:'start'})}chips.onclick=e=>{const b=e.target.closest('[data-cat]');if(b)selectCat(b.dataset.cat)};document.getElementById('categoryCards').onclick=e=>{const b=e.target.closest('[data-showcat]');if(b)selectCat(b.dataset.showcat)};search.oninput=()=>render(true);sort.onchange=()=>render(true);more.onclick=()=>{visible+=30;render(false)};
+grid.onclick=e=>{const a=e.target.closest('[data-add]');if(a){cart.push(Number(a.dataset.add));saveCart();toast('Added to cart');return}const w=e.target.closest('[data-wish]');if(w){const id=Number(w.dataset.wish);wish.has(id)?wish.delete(id):wish.add(id);localStorage.setItem('tk-wish',JSON.stringify([...wish]));w.classList.toggle('active')}};
+async function loadMeta(img,b){const ck='tk-meta-v2-'+b.id;try{let meta=JSON.parse(localStorage.getItem(ck)||'null');if(!meta){const q=encodeURIComponent(`intitle:${b.title} inauthor:${b.author.split(',')[0]}`);const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&printType=books&projection=full`);if(!r.ok)throw 0;const d=await r.json(),v=d.items?.[0],vi=v?.volumeInfo||{},si=v?.saleInfo||{};meta={cover:(vi.imageLinks?.large||vi.imageLinks?.medium||vi.imageLinks?.thumbnail||'').replace('http://','https://'),price:si.country==='US'&&si.retailPrice?.currencyCode==='USD'?si.retailPrice.amount:null};localStorage.setItem(ck,JSON.stringify(meta))}if(meta.cover)img.src=meta.cover;if(meta.price){const p=document.getElementById('price-'+b.id),n=document.getElementById('note-'+b.id),l=document.getElementById('live-'+b.id);if(p)p.textContent='$'+Number(meta.price).toFixed(2);if(n)n.textContent='Google Books retail';if(l)l.classList.add('on')}}catch(_){try{const r=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(b.title)}&author=${encodeURIComponent(b.author.split(',')[0])}&limit=1&fields=cover_i`);const d=await r.json(),c=d.docs?.[0]?.cover_i;if(c)img.src=`https://covers.openlibrary.org/b/id/${c}-L.jpg`}catch(_e){}}}
+let io;function observeMeta(){if(io)io.disconnect();io=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting){const img=x.target,b=books.find(v=>v.id===Number(img.dataset.coverId));if(b)loadMeta(img,b);io.unobserve(img)}}),{rootMargin:'250px'});document.querySelectorAll('[data-cover-id]').forEach(i=>io.observe(i))}
+const drawer=document.getElementById('cartDrawer'),overlay=document.getElementById('overlay'),cartItems=document.getElementById('cartItems'),cartEmpty=document.getElementById('cartEmpty'),cartTotal=document.getElementById('cartTotal'),cartCount=document.getElementById('cartCount');function currentPrice(id){const p=document.getElementById('price-'+id);return p?Number(p.textContent.replace(/[^0-9.]/g,'')):(books.find(b=>b.id===id)?.price||0)}function saveCart(){localStorage.setItem('tk-cart',JSON.stringify(cart));renderCart()}function renderCart(){cartCount.textContent=cart.length;const counts=cart.reduce((m,id)=>(m[id]=(m[id]||0)+1,m),{}),ids=Object.keys(counts).map(Number);cartEmpty.style.display=ids.length?'none':'block';cartItems.innerHTML=ids.map(id=>{const b=books.find(x=>x.id===id);return `<div class="cart-item"><img src="${placeholder(b)}" alt=""><div><strong>${esc(b.title)}</strong><span>${counts[id]} × $${currentPrice(id).toFixed(2)}</span></div><button data-remove="${id}">×</button></div>`}).join('');cartTotal.textContent='$'+cart.reduce((s,id)=>s+currentPrice(id),0).toFixed(2)}cartItems.onclick=e=>{const b=e.target.closest('[data-remove]');if(!b)return;const id=Number(b.dataset.remove),i=cart.indexOf(id);if(i>=0)cart.splice(i,1);saveCart()};function openCart(){drawer.classList.add('open');overlay.classList.add('open');drawer.setAttribute('aria-hidden','false');renderCart()}function closeCart(){drawer.classList.remove('open');overlay.classList.remove('open');drawer.setAttribute('aria-hidden','true')}document.getElementById('openCart').onclick=openCart;document.getElementById('closeCart').onclick=closeCart;overlay.onclick=closeCart;document.getElementById('checkoutButton').onclick=()=>toast('Checkout is ready for payment-provider integration.');function toast(msg){let t=document.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),1800)}render(true);renderCart();
